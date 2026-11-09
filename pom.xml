@@ -48,7 +48,7 @@
     <!-- slf4j-api arrives transitively from amqp-client. Pinning it here keeps the API and
          the test backend (slf4j-simple) on the same version: a 2.x API silently ignores a
          1.7 backend, so they have to move together. -->
-    <slf4j.version>1.7.36</slf4j.version>
+    <slf4j.version>2.0.20</slf4j.version>
 
     <!-- Build -->
     <google-java-format.version>1.35.0</google-java-format.version>
