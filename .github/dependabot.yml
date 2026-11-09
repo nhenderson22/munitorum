@@ -1,0 +1,39 @@
+# Dependency update PRs, checked weekly. Minor and patch updates are grouped into one PR
+# per ecosystem. Major updates get a PR each so they can be reviewed on their own.
+#
+# compose.yaml is deliberately not listed. Its images use major-version tags
+# (postgres:18, rabbitmq:4-management) that already pick up patch releases, so the only
+# updates Dependabot could offer are major upgrades. Those need a data migration and have
+# to change the integration tests' images at the same time, so they're done by hand.
+
+version: 2
+updates:
+  # pom.xml dependencies and plugins, plus the Maven Wrapper (.mvn/wrapper).
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      maven-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  # Containerfile base images. They're pinned by digest, so most PRs here refresh the
+  # digest for the same tag, i.e. pick up a patched base image.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # Stay on the Java 25 toolchain. Moving Java versions is a deliberate change.
+      - dependency-name: "*native-image-community"
+        update-types: [version-update:semver-major]

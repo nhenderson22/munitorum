@@ -1,0 +1,11 @@
+# Allowlist. The Containerfile only copies the Maven Wrapper, pom.xml and src/, so
+# nothing else goes into the build context (no target/, .git/, IDE files or docs).
+# If the Containerfile starts copying something new, allow it here too.
+#
+# Docker only reads .dockerignore. Podman and Buildah read .containerignore first and
+# fall back to this file, so one file covers both.
+*
+!mvnw
+!.mvn
+!pom.xml
+!src

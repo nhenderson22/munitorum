@@ -1,0 +1,3 @@
+-- Munitorum database schema.
+--
+-- Applied to new databases only (tests, CI and the local compose stack); see README.md.

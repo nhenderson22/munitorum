@@ -1,0 +1,75 @@
+# Local development stack.
+#
+#   podman compose up -d                    # infra only: Postgres (fresh, schema + seed) + RabbitMQ
+#   podman compose down                     # stop; nothing is kept, the next start is fresh
+#   podman compose --profile app up -d      # infra + the native Munitorum image
+#
+# Only standard Compose features are used, so `docker compose` works the same way.
+# Image names are fully qualified so Podman never prompts for a registry.
+# Keep these versions in sync with the integration tests' images (src/test/.../TestImages.java).
+#
+# Ports are published on 127.0.0.1 only. The credentials below are for local
+# development, so the services shouldn't be reachable from the rest of the network.
+
+name: munitorum
+
+services:
+  postgres:
+    image: docker.io/library/postgres:18
+    environment:
+      POSTGRES_DB: munitorum
+      POSTGRES_USER: munitorum
+      POSTGRES_PASSWORD: munitorum
+    ports:
+      - "127.0.0.1:5432:5432"
+    # Throwaway: the data lives in memory, so every start is a fresh database. On creation,
+    # dev/postgres-init.sh applies src/main/sql (the schema) and then dev/seed (seed data).
+    # To start over after editing either: podman compose down && podman compose up -d
+    tmpfs:
+      - /var/lib/postgresql
+    volumes:
+      - ./dev/postgres-init.sh:/docker-entrypoint-initdb.d/postgres-init.sh:ro,z
+      - ./src/main/sql:/munitorum/schema:ro,z
+      - ./dev/seed:/munitorum/seed:ro,z
+    healthcheck:
+      # Over TCP on purpose: during init Postgres runs a temporary server on the local socket
+      # only, so this passes once the schema and seed data are in, not before.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U munitorum -d munitorum"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: docker.io/library/rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: munitorum
+      RABBITMQ_DEFAULT_PASS: munitorum
+    ports:
+      - "127.0.0.1:5672:5672"     # AMQP
+      - "127.0.0.1:15672:15672"   # Management UI: http://localhost:15672
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /var/lib/rabbitmq/.erlang.cookie && rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  munitorum:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: localhost/munitorum:dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    # Placeholders: the app doesn't read these variables or serve HTTP yet. For now the
+    # container prints a greeting and exits, which is expected.
+    environment:
+      MUNITORUM_DB_URL: jdbc:postgresql://postgres:5432/munitorum
+      MUNITORUM_DB_USER: munitorum
+      MUNITORUM_DB_PASSWORD: munitorum
+      MUNITORUM_AMQP_URI: amqp://munitorum:munitorum@rabbitmq:5672
+    ports:
+      - "127.0.0.1:8080:8080"

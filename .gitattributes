@@ -1,0 +1,5 @@
+# Normalise line endings to LF. mvnw is a shell script and fails with CRLF, so it is
+# called out explicitly; Windows batch files keep CRLF.
+* text=auto eol=lf
+mvnw text eol=lf
+*.cmd text eol=crlf
